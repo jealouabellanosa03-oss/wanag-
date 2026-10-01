@@ -820,6 +820,45 @@
         });
     </script>
 
+
+<!-- =====================================================
+     BOARDINGPAY OFFLINE SERVICE WORKER
+===================================================== -->
+<script>
+(function () {
+    "use strict";
+
+    if (!("serviceWorker" in navigator)) {
+        console.warn("Service Worker is not supported in this browser.");
+        return;
+    }
+
+    window.addEventListener("load", function () {
+
+        navigator.serviceWorker.register("./sw.js", {
+            scope: "./"
+        })
+        .then(function (registration) {
+
+            console.log(
+                "[BoardingPay] Offline Service Worker registered:",
+                registration.scope
+            );
+
+        })
+        .catch(function (error) {
+
+            console.error(
+                "[BoardingPay] Service Worker registration failed:",
+                error
+            );
+
+        });
+
+    });
+})();
+</script>
+
 </body>
 
 </html>
