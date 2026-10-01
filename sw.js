@@ -1,54 +1,34 @@
 /* ============================================================
    BOARDINGPAY SERVICE WORKER
-   Offline Cache / App Support
+   OFFLINE CACHE / PWA SUPPORT
 ============================================================ */
 
-const CACHE_NAME = "boardingpay-v1";
+const CACHE_NAME = "boardingpay-v2";
 
-/*
-   Main files of the BoardingPay application
-*/
 const APP_FILES = [
     "./",
     "./index.html",
-    "./welcome.html",
-    "./get-started.html",
-    "./login.html",
-
-    /* Admin */
-    "./admin-register.html",
-    "./create-account.html",
-    "./completeprofile.html",
     "./admin-dashboard.html",
-
-    /* Landlord */
-    "./landlord-register.html",
-    "./landlord-dashboard.html",
-
-    /* Tenant */
-    "./tenant-register.html",
-    "./tenant-dashboard.html",
-
-    /* Payments */
-    "./paymentmethod.html",
-    "./payment-details.html",
-    "./payment-success.html",
-
-    /* Other pages */
-    "./profile.html",
-    "./settings.html",
-    "./history.html",
+    "./admin-register.html",
     "./announcements.html",
     "./contact.html",
+    "./create-account.html",
     "./forgot-password.html",
-    
-    
-
-    /* CSS */
+    "./get-started.html",
+    "./history.html",
+    "./landlord-dashboard.html",
+    "./landlord-register.html",
+    "./login.html",
+    "./payment-details.html",
+    "./payment-success.html",
+    "./paymentmethod.html",
+    "./profile.html",
+    "./settings.html",
+    "./tenant-dashboard.html",
+    "./tenant-register.html",
+    "./script.js",
     "./style.css",
-
-    /* JavaScript */
-    "./script.js"
+    "./sw.js"
 ];
 
 
@@ -61,27 +41,29 @@ self.addEventListener("install", event => {
     console.log("[BoardingPay SW] Installing...");
 
     event.waitUntil(
+
         caches.open(CACHE_NAME)
             .then(cache => {
 
-                console.log("[BoardingPay SW] Caching app files...");
+                console.log(
+                    "[BoardingPay SW] Caching app files..."
+                );
 
                 return cache.addAll(APP_FILES);
+
             })
             .then(() => {
 
-                console.log("[BoardingPay SW] Installation complete.");
+                console.log(
+                    "[BoardingPay SW] Cache complete."
+                );
 
                 return self.skipWaiting();
-            })
-            .catch(error => {
 
-                console.error(
-                    "[BoardingPay SW] Cache installation failed:",
-                    error
-                );
             })
+
     );
+
 });
 
 
@@ -101,6 +83,7 @@ self.addEventListener("activate", event => {
                 return Promise.all(
 
                     cacheNames
+
                         .filter(cacheName => {
 
                             return (
@@ -109,12 +92,8 @@ self.addEventListener("activate", event => {
                             );
 
                         })
-                        .map(oldCache => {
 
-                            console.log(
-                                "[BoardingPay SW] Removing old cache:",
-                                oldCache
-                            );
+                        .map(oldCache => {
 
                             return caches.delete(oldCache);
 
@@ -123,69 +102,48 @@ self.addEventListener("activate", event => {
                 );
 
             })
-            .then(() => {
 
-                console.log(
-                    "[BoardingPay SW] Activation complete."
-                );
+            .then(() => {
 
                 return self.clients.claim();
 
             })
 
     );
+
 });
 
 
 /* ============================================================
    FETCH
-   OFFLINE-FIRST
+   OFFLINE FIRST
 ============================================================ */
 
 self.addEventListener("fetch", event => {
 
     const request = event.request;
 
-    /*
-       Only handle GET requests.
-    */
-
     if (request.method !== "GET") {
         return;
     }
 
-
     event.respondWith(
 
         caches.match(request)
+
             .then(cachedResponse => {
 
-                /*
-                   If file exists in cache,
-                   use cached version.
-                */
-
                 if (cachedResponse) {
-
                     return cachedResponse;
                 }
 
-
-                /*
-                   Otherwise try internet.
-                */
-
                 return fetch(request)
-                    .then(networkResponse => {
 
-                        /*
-                           Save successful response
-                           into cache.
-                        */
+                    .then(networkResponse => {
 
                         if (
                             networkResponse &&
-                            networkResponse.status === 200 &&
+                            networkResponse.ok &&
                             networkResponse.type === "basic"
                         ) {
 
@@ -207,12 +165,8 @@ self.addEventListener("fetch", event => {
                         return networkResponse;
 
                     })
-                    .catch(() => {
 
-                        /*
-                           If offline and the requested page
-                           is not cached, return index.html.
-                        */
+                    .catch(() => {
 
                         if (
                             request.destination === "document"
@@ -224,11 +178,20 @@ self.addEventListener("fetch", event => {
 
                         }
 
+                        return new Response(
+                            "",
+                            {
+                                status: 503,
+                                statusText: "Offline"
+                            }
+                        );
+
                     });
 
             })
 
     );
+
 });
 
 
@@ -242,40 +205,38 @@ self.addEventListener("message", event => {
         return;
     }
 
-
-    /*
-       Force service worker to activate immediately.
-    */
-
     if (event.data.action === "SKIP_WAITING") {
 
         self.skipWaiting();
 
     }
 
-
-    /*
-       Clear all BoardingPay caches.
-    */
-
     if (event.data.action === "CLEAR_CACHE") {
 
-        caches.keys()
-            .then(cacheNames => {
+        event.waitUntil(
 
-                return Promise.all(
+            caches.keys()
+                .then(cacheNames => {
 
-                    cacheNames.map(cacheName => {
+                    return Promise.all(
 
-                        return caches.delete(
-                            cacheName
-                        );
+                        cacheNames
 
-                    })
+                            .filter(name =>
+                                name.startsWith(
+                                    "boardingpay-"
+                                )
+                            )
 
-                );
+                            .map(name =>
+                                caches.delete(name)
+                            )
 
-            });
+                    );
+
+                })
+
+        );
 
     }
 
